@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopify Collection AI Description Generator</title>
+    <!-- Shopify App Bridge v4 -->
+    <meta name="shopify-api-key" content="%SHOPIFY_CLIENT_ID%" />
+    <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #080c14;
+            --card-bg: rgba(17, 24, 39, 0.65);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --accent-primary: #6366f1;
+            --accent-primary-hover: #4f46e5;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --success-color: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.15);
+            --error-color: #ef4444;
+            --error-bg: rgba(239, 68, 68, 0.15);
+            --warning-color: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.15);
+            --info-color: #3b82f6;
+            --info-bg: rgba(59, 130, 246, 0.15);
+            --border-radius: 12px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            padding-bottom: 60px;
+        }
+
+        /* Scrollbar styles */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Container & Grid Layout */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px 16px;
+        }
+
+        /* Header block */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            background: rgba(10, 15, 30, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            margin-bottom: 24px;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-title h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .connection-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .connection-badge.connected {
+            background: var(--success-bg);
+            color: var(--success-color);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .connection-badge.disconnected {
+            background: var(--error-bg);
+            color: var(--error-color);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .connection-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: currentColor;
+            display: inline-block;
+        }
+
+        /* Config Error Alert */
+        .config-error-banner {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .config-error-banner h3 {
+            color: var(--error-color);
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .config-error-banner p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 12px;
+            white-space: pre-line;
+        }
+
+        .config-error-banner code {
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #f43f5e;
+        }
+
+        /* Collection Card Grid */
+        .collections-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .collection-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .collection-card:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 14px;
+        }
+
+        .collection-title-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .collection-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .collection-id {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            font-size: 0.725rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-badge.original {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-badge.generating {
+            background: var(--info-bg);
+            color: var(--info-color);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+
+        .status-badge.draft {
+            background: var(--warning-bg);
+            color: var(--warning-color);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .status-badge.rejected {
+            background: var(--error-bg);
+            color: var(--error-color);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .status-badge.updated {
+            background: var(--success-bg);
+            color: var(--success-color);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-badge.val-error {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error-color);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        /* Card Content Layout */
+        .card-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .card-body {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .description-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .pane-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .description-content {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            min-height: 100px;
+            max-height: 160px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .description-content.empty {
+            color: var(--text-muted);
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Form Textarea for editing generated draft */
+        .description-textarea {
+            width: 100%;
+            height: 100px;
+            min-height: 100px;
+            max-height: 160px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-family: inherit;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            resize: vertical;
+            transition: var(--transition);
+        }
+
+        .description-textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+
+        .description-textarea:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Validation Error Message Box */
+        .validation-error-msg {
+            font-size: 0.8rem;
+            color: var(--error-color);
+            background: rgba(239, 68, 68, 0.08);
+            border-left: 3px solid var(--error-color);
+            padding: 6px 12px;
+            border-radius: 4px;
+            margin-top: 6px;
+        }
+
+        /* Buttons & Actions */
+        .card-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 14px;
+        }
+
+        .btn {
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error-color);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: var(--error-color);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Pagination & Footer actions */
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 32px;
+            gap: 16px;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+
+        .big-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 40px auto;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(10px);
+        }
+
+        .empty-state h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .empty-state p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+    </style>
+</head>
+<body>
+    <div id="diagnostic-banner" style="background: #f59e0b; color: #000; padding: 10px; font-weight: bold; text-align: center; font-size: 1.2rem; z-index: 9999; position: relative;">
+        Collection AI — Booting...
+    </div>
+
+    <div class="container">
+        <!-- App Header -->
+        <header>
+            <div class="header-title">
+                <h1>Shopify Collection AI Description Generator</h1>
+            </div>
+            <div id="connection-status" class="connection-badge disconnected">
+                <span class="dot"></span> Checking connection...
+            </div>
+        </header>
+
+        <!-- Diagnostic Debug Panel -->
+        <div id="telemetry-debug-panel" style="background: rgba(30, 41, 59, 0.9); border: 1px solid #38bdf8; border-radius: 8px; padding: 15px; margin-bottom: 20px; font-family: monospace; font-size: 0.85rem; color: #f8fafc;">
+            <h4 style="margin: 0 0 10px 0; color: #38bdf8; font-size: 1rem; border-bottom: 1px solid #334155; padding-bottom: 5px;">[Auth Debug Panel]</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <div><strong>Launch Mode:</strong> <span id="debug-launch-mode">Checking...</span></div>
+                <div><strong>Host Parameter:</strong> <span id="debug-host-present">Checking...</span></div>
+                <div><strong>HMAC Parameter:</strong> <span id="debug-hmac-present">Checking...</span></div>
+                <div><strong>Shopify Client ID:</strong> <span id="debug-client-id-present">Checking...</span></div>
+                <div><strong>App Bridge Script:</strong> <span id="debug-script-loaded">Checking...</span></div>
+            </div>
+        </div>
+
+        <!-- Configuration Error Banner -->
+        <div id="config-error-container" style="display: none;">
+            <div class="config-error-banner">
+                <h3>⚠️ Missing Setup Config</h3>
+                <p id="config-error-text"></p>
+                <button class="btn btn-primary" onclick="checkConfig()">Retry Config Check</button>
+            </div>
+        </div>
+
+        <!-- Main Body -->
+        <main id="main-content">
+            <div id="loading-container" style="display: none;">
+                <div class="big-spinner"></div>
+                <p style="text-align: center; color: var(--text-secondary); font-size: 0.9rem;">Fetching collections from Shopify...</p>
+            </div>
+
+            <div id="collections-container" class="collections-list">
+                <!-- Cards will render here -->
+            </div>
+
+            <!-- Pagination controls -->
+            <div id="pagination" class="pagination-container" style="display: none;">
+                <button id="btn-load-more" class="btn btn-secondary" onclick="loadMoreCollections()">
+                    Load More Collections
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Diagnostic Logging Telemetry helper
+        function logStage(stageNum, stageName, details = '') {
+            const logMsg = `[Stage ${stageNum}] ${stageName}${details ? ' - ' + details : ''}`;
+            console.log(logMsg);
+            
+            // Update diagnostic banner
+            const banner = document.getElementById('diagnostic-banner');
+            if (banner) {
+                banner.textContent = `Collection AI — ${logMsg}`;
+                if (stageNum === 12) {
+                    banner.style.background = '#10b981'; // Green on success
+                    setTimeout(() => {
+                        banner.style.display = 'none';
+                    }, 2000);
+                }
+            }
+            
+            // Post to backend securely
+            fetch('/api/auth-debug', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ log: logMsg })
+            }).catch(() => {});
+        }
+
+        // Global error tracking for remote diagnostics
+        window.addEventListener('error', function(e) {
+            const errorMsg = e.message || 'Unknown JS Error';
+            const errorStack = e.error ? e.error.stack : '';
+            console.error("Global JS error caught:", errorMsg);
+            fetch('/api/auth-debug', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ error: errorMsg, stack: errorStack })
+            }).catch(() => {});
+            
+            showInitError(new Error(errorMsg));
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            const errorMsg = e.reason ? (e.reason.message || String(e.reason)) : 'Unhandled Promise Rejection';
+            const errorStack = e.reason && e.reason.stack ? e.reason.stack : '';
+            console.error("Global unhandled rejection caught:", errorMsg);
+            fetch('/api/auth-debug', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ error: errorMsg, stack: errorStack })
+            }).catch(() => {});
+            
+            showInitError(new Error(errorMsg));
+        });
+
+        // Safe helper to show errors visually in the DOM instead of a blank page
+        function showInitError(error) {
+            const errorContainer = document.getElementById('config-error-container');
+            const errorText = document.getElementById('config-error-text');
+            const statusBadge = document.getElementById('connection-status');
+            const collectionsContainer = document.getElementById('collections-container');
+            const loadingContainer = document.getElementById('loading-container');
+            const banner = document.getElementById('diagnostic-banner');
+            
+            if (banner) {
+                banner.style.background = '#ef4444'; // Red
+                banner.textContent = `Collection AI — Failed at boot: ${error.message || error}`;
+            }
+            if (statusBadge) {
+                statusBadge.className = 'connection-badge disconnected';
+                statusBadge.innerHTML = '<span class="dot"></span> Connection Error';
+            }
+            if (loadingContainer) {
+                loadingContainer.style.display = 'none';
+            }
+            if (collectionsContainer) {
+                collectionsContainer.innerHTML = '';
+            }
+            if (errorContainer && errorText) {
+                errorContainer.style.display = 'block';
+                errorText.innerHTML = `<strong>Application Loading Failed</strong><br>${error.message || error}<br><br><small>If you are an administrator, verify that this application has been launched inside the Shopify Admin panel as an embedded app.</small>`;
+            }
+        }
+
+        let collections = [];
+        let nextCursor = null;
+        let hasNextPage = false;
+        let isConfigValid = false;
+
+        // Helper to retrieve the Shopify Session Token (JWT) from App Bridge v4
+        async function getSessionToken() {
+            // Check if running inside iframe
+            const isIframe = window.self !== window.top;
+            if (!isIframe) {
+                logStage(9, "Authentication/session token obtained", "Skipped: Standalone execution (outside iframe)");
+                return null;
+            }
+
+            if (typeof shopify !== 'undefined' && shopify.idToken) {
+                try {
+                    logStage(9, "Authentication/session token obtained", "Requesting token...");
+                    const token = await shopify.idToken();
+                    logStage(9, "Authentication/session token obtained", "Success");
+                    return token;
+                } catch (err) {
+                    logStage(9, "Authentication/session token obtained", `Failed: ${err.message || err}`);
+                    return null;
+                }
+            }
+            logStage(9, "Authentication/session token obtained", "Failed: window.shopify or shopify.idToken is not available");
+            return null;
+        }
+
+        // Wrapper around fetch to automatically include the Shopify Authorization header
+        async function authenticatedFetch(url, options = {}) {
+            const token = await getSessionToken();
+            const headers = { ...(options.headers || {}) };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const authHeaderPresent = !!headers['Authorization'];
+            // Telemetry logging before collections request (Step 4)
+            if (url.includes('/api/collections')) {
+                console.log("[Auth Debug] Making collections request");
+                console.log("[Auth Debug] Authorization header present:", authHeaderPresent);
+                
+                fetch('/api/auth-debug', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        log: `[Auth Debug] Making collections request - Authorization header present: ${authHeaderPresent}` 
+                    })
+                }).catch(() => {});
+            }
+            
+            return fetch(url, { ...options, headers });
+        }
+
+        // Standalone verification and redirection block
+        function checkStandaloneRedirect() {
+            const params = new URLSearchParams(window.location.search);
+            const hmac = params.get('hmac');
+            const host = params.get('host');
+            
+            if (!hmac || !host) {
+                logStage(7, "Shopify launch parameters detected", "No. Standalone execution active.");
+                const statusBadge = document.getElementById('connection-status');
+                if (statusBadge) {
+                    statusBadge.className = 'connection-badge disconnected';
+                    statusBadge.innerHTML = '<span class="dot"></span> Standalone Mode';
+                }
+                const errorContainer = document.getElementById('config-error-container');
+                const errorText = document.getElementById('config-error-text');
+                if (errorContainer && errorText) {
+                    errorContainer.style.display = 'block';
+                    errorText.innerHTML = `<strong>Open this app from Shopify Admin to authenticate.</strong><br><br><small>This custom-distributed app requires embedded launching parameters from the Shopify dashboard to authenticate and pull your store's collections.</small>`;
+                }
+                return false;
+            }
+            
+            logStage(7, "Shopify launch parameters detected", `Yes. Host: ${host}`);
+            return true;
+        }
+
+        // Wait for window.shopify to resolve before completing setup
+        function waitForShopify(callback, maxAttempts = 100) {
+            let attempts = 0;
+            function check() {
+                attempts++;
+                const isLoaded = typeof shopify !== 'undefined';
+                
+                // Add temporary diagnostics to console and telemetry
+                const params = new URLSearchParams(window.location.search);
+                const hostParam = params.get('host');
+                const hmacParam = params.get('hmac');
+                const clientMeta = document.querySelector('meta[name="shopify-api-key"]');
+                const clientId = clientMeta ? clientMeta.content : '';
+                
+                const isEmbedded = !!(hostParam && hmacParam);
+                
+                // Update Debug Panel elements
+                const modeEl = document.getElementById('debug-launch-mode');
+                const hostEl = document.getElementById('debug-host-present');
+                const hmacEl = document.getElementById('debug-hmac-present');
+                const clientEl = document.getElementById('debug-client-id-present');
+                const scriptEl = document.getElementById('debug-script-loaded');
+                
+                if (modeEl) {
+                    modeEl.textContent = isEmbedded ? 'Embedded' : 'Standalone';
+                    modeEl.style.color = isEmbedded ? '#10b981' : '#f59e0b';
+                }
+                if (hostEl) {
+                    hostEl.textContent = hostParam ? 'Present' : 'Missing';
+                    hostEl.style.color = hostParam ? '#10b981' : '#ef4444';
+                }
+                if (hmacEl) {
+                    hmacEl.textContent = hmacParam ? 'Present' : 'Missing';
+                    hmacEl.style.color = hmacParam ? '#10b981' : '#ef4444';
+                }
+                if (clientEl) {
+                    clientEl.textContent = (clientId && !clientId.startsWith('%')) ? 'Present' : 'Missing';
+                    clientEl.style.color = (clientId && !clientId.startsWith('%')) ? '#10b981' : '#ef4444';
+                }
+                if (scriptEl) {
+                    scriptEl.textContent = isLoaded ? 'Loaded' : 'Failed';
+                    scriptEl.style.color = isLoaded ? '#10b981' : '#ef4444';
+                }
+
+                if (attempts === 1 || isLoaded || attempts === maxAttempts) {
+                    console.log(`[Auth Debug] Attempt ${attempts} - host present: ${!!hostParam}, client ID present: ${!!clientId && !clientId.startsWith('%')}, App Bridge script loaded: ${isLoaded}`);
+                }
+                
+                if (isLoaded) {
+                    logStage(6, "App Bridge script loaded", `window.shopify became available after ${attempts} attempts`);
+                    logStage(8, "Shopify App Bridge initialized", "Yes");
+                    callback();
+                } else if (attempts < maxAttempts) {
+                    setTimeout(check, 50);
+                } else {
+                    logStage(6, "App Bridge script loaded", "window.shopify is NOT available after timeout");
+                    logStage(8, "Shopify App Bridge initialized", "No");
+                    callback();
+                }
+            }
+            check();
+        }
+
+        // Run startup on load
+        document.addEventListener('DOMContentLoaded', () => {
+            logStage(1, "DOM loaded");
+            
+            // Check if static script tag is in place
+            const scriptTag = document.querySelector('script[src*="app-bridge.js"]');
+            logStage(5, "App Bridge script requested", scriptTag ? "Static tag present in head" : "Missing script tag");
+            
+            // After page initialization logs (Step 4)
+            const params = new URLSearchParams(window.location.search);
+            const hostParam = params.get('host');
+            const clientMeta = document.querySelector('meta[name="shopify-api-key"]');
+            const clientId = clientMeta ? clientMeta.content : '';
+            const appBridgeLoaded = typeof shopify !== 'undefined';
+            
+            console.log("[Auth Debug] Shopify host present:", !!hostParam);
+            console.log("[Auth Debug] Shopify client ID present:", !!clientId && !clientId.startsWith('%'));
+            console.log("[Auth Debug] App Bridge script loaded:", appBridgeLoaded);
+            
+            fetch('/api/auth-debug', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    log: `[Auth Debug] Page Init - host present: ${!!hostParam}, client ID present: ${!!clientId && !clientId.startsWith('%')}, script loaded: ${appBridgeLoaded}` 
+                })
+            }).catch(() => {});
+            
+            try {
+                // Wait for App Bridge initialization before fetching config/collections
+                waitForShopify(() => {
+                    const isEmbedded = checkStandaloneRedirect();
+                    if (isEmbedded) {
+                        checkConfig();
+                    } else {
+                        logStage(12, "UI rendered", "Standalone warning page displayed");
+                    }
+                });
+            } catch (err) {
+                console.error("Startup execution failed:", err);
+                showInitError(err);
+            }
+        });
+
+        // Verifies API Configuration variables on startup
+        async function checkConfig() {
+            const statusBadge = document.getElementById('connection-status');
+            const errorContainer = document.getElementById('config-error-container');
+            const errorText = document.getElementById('config-error-text');
+            const collectionsContainer = document.getElementById('collections-container');
+
+            statusBadge.className = 'connection-badge disconnected';
+            statusBadge.innerHTML = '<span class="dot"></span> Checking connection...';
+            errorContainer.style.display = 'none';
+
+            logStage(2, "Starting config-check");
+            try {
+                const response = await authenticatedFetch('/api/config-check');
+                logStage(3, "config-check response received", `HTTP ${response.status}`);
+                
+                const data = await response.json();
+
+                if (data.status === 'valid') {
+                    isConfigValid = true;
+                    statusBadge.className = 'connection-badge connected';
+                    statusBadge.innerHTML = `<span class="dot"></span> Shopify API Active (${data.shopify_shop_url})`;
+                    logStage(4, "Shopify client ID obtained", `Valid configuration found for shop: ${data.shopify_shop_url}`);
+                    
+                    collections = [];
+                    nextCursor = null;
+                    loadCollections();
+                } else {
+                    isConfigValid = false;
+                    statusBadge.className = 'connection-badge disconnected';
+                    statusBadge.innerHTML = '<span class="dot"></span> Config Error';
+                    errorText.textContent = data.error || 'Shopify configuration is invalid.';
+                    errorContainer.style.display = 'block';
+                    collectionsContainer.innerHTML = '';
+                    document.getElementById('pagination').style.display = 'none';
+                    logStage(4, "Shopify client ID obtained", `Config check failed: ${data.error}`);
+                }
+            } catch (err) {
+                isConfigValid = false;
+                statusBadge.className = 'connection-badge disconnected';
+                statusBadge.innerHTML = '<span class="dot"></span> Offline';
+                errorText.textContent = 'Could not communicate with backend server. Verify connection is active.';
+                errorContainer.style.display = 'block';
+                collectionsContainer.innerHTML = '';
+                document.getElementById('pagination').style.display = 'none';
+                logStage(2, "Starting config-check", `Failed: ${err.message || err}`);
+            }
+        }
+
+        // Fetch Shopify collections
+        async function loadCollections(cursor = null) {
+            const loadingContainer = document.getElementById('loading-container');
+            const paginationContainer = document.getElementById('pagination');
+            const collectionsContainer = document.getElementById('collections-container');
+
+            if (!cursor) {
+                loadingContainer.style.display = 'block';
+                collectionsContainer.innerHTML = '';
+                paginationContainer.style.display = 'none';
+            }
+
+            logStage(10, "/api/collections requested", cursor ? `Cursor: ${cursor}` : "Initial page");
+            try {
+                let url = '/api/collections?limit=10';
+                if (cursor) {
+                    url += `&cursor=${encodeURIComponent(cursor)}`;
+                }
+
+                const response = await authenticatedFetch(url);
+                logStage(11, "/api/collections response received", `HTTP ${response.status}`);
+                
+                const data = await response.json();
+                loadingContainer.style.display = 'none';
+
+                if (response.ok && data.status === 'success') {
+                    const fetched = data.collections.map(col => ({
+                        ...col,
+                        generatedDescription: '',
+                        status: 'original',
+                        errorMsg: ''
+                    }));
+
+                    collections = [...collections, ...fetched];
+                    nextCursor = data.next_cursor;
+                    hasNextPage = data.has_next_page;
+
+                    renderCollections();
+                    logStage(12, "UI rendered", `Successfully loaded ${fetched.length} collections.`);
+                } else {
+                    const errorMsg = data.message || `API returned status ${response.status}`;
+                    collectionsContainer.innerHTML = `
+                        <div class="empty-state">
+                            <h3>⚠️ Error Retrieving Collections</h3>
+                            <p>${errorMsg}</p>
+                            <button class="btn btn-primary" style="margin-top: 15px;" onclick="loadCollections()">Retry Loading</button>
+                        </div>
+                    `;
+                    logStage(11, "/api/collections response received", `Error payload: ${errorMsg}`);
+                }
+            } catch (err) {
+                loadingContainer.style.display = 'none';
+                collectionsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>⚠️ Connection Error</h3>
+                        <p>Could not load collections: ${err.message || err}</p>
+                        <button class="btn btn-primary" style="margin-top: 15px;" onclick="loadCollections()">Retry Loading</button>
+                    </div>
+                `;
+                logStage(10, "/api/collections requested", `Failed with exception: ${err.message || err}`);
+            }
+        }
+
+        // Render collections lists inside cards
+        function renderCollections() {
+            const container = document.getElementById('collections-container');
+            const pagination = document.getElementById('pagination');
+
+            if (collections.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No collections found</h3>
+                        <p>Verify that your Shopify store contains brand or custom collections.</p>
+                    </div>
+                `;
+                pagination.style.display = 'none';
+                return;
+            }
+
+            if (hasNextPage) {
+                pagination.style.display = 'block';
+            } else {
+                pagination.style.display = 'none';
+            }
+
+            container.innerHTML = collections.map((col, index) => {
+                let badgeClass = 'badge-original';
+                let badgeText = 'Original';
+                let actionsHtml = '';
+                let isGenerating = col.status === 'generating';
+                let isSaving = col.status === 'saving';
+
+                let generatedPaneContent = `
+                    <div class="textarea-container">
+                        <textarea 
+                            placeholder="Generated AI description will appear here. You can manually edit it before approval..."
+                            oninput="updateDraftValue(${index}, this.value)"
+                            ${isSaving ? 'disabled' : ''}
+                        >${col.generatedDescription || ''}</textarea>
+                    </div>
+                `;
+
+                if (col.status === 'generating') {
+                    badgeClass = 'badge-generating';
+                    badgeText = 'Generating...';
+                    generatedPaneContent = `
+                        <div class="skeleton-pane">
+                            <div class="skeleton-line shadow-pulse"></div>
+                            <div class="skeleton-line shadow-pulse" style="width: 85%;"></div>
+                            <div class="skeleton-line shadow-pulse" style="width: 60%;"></div>
+                        </div>
+                    `;
+                } else if (col.status === 'draft') {
+                    badgeClass = 'badge-draft';
+                    badgeText = 'Draft';
+                } else if (col.status === 'rejected') {
+                    badgeClass = 'badge-rejected';
+                    badgeText = 'Rejected';
+                } else if (col.status === 'saving') {
+                    badgeClass = 'badge-saving';
+                    badgeText = 'Saving to Shopify...';
+                } else if (col.status === 'success') {
+                    badgeClass = 'badge-success';
+                    badgeText = 'Saved';
+                } else if (col.status === 'error') {
+                    badgeClass = 'badge-error';
+                    badgeText = 'API Error';
+                } else if (col.status === 'val_error') {
+                    badgeClass = 'badge-warning';
+                    badgeText = 'Validation Failed';
+                }
+
+                if (col.errorMsg) {
+                    generatedPaneContent = `
+                        <div class="error-msg-banner">
+                            <strong>Error:</strong> ${col.errorMsg}
+                        </div>
+                        ${generatedPaneContent}
+                    `;
+                }
+
+                if (col.status === 'success') {
+                    actionsHtml = `
+                        <button class="btn btn-secondary" onclick="generateAI(${index})">
+                            Regenerate
+                        </button>
+                    `;
+                } else if (isGenerating || isSaving) {
+                    actionsHtml = `
+                        <button class="btn btn-secondary" disabled>
+                            <span class="spinner"></span> Working...
+                        </button>
+                    `;
+                } else {
+                    const label = col.generatedDescription ? 'Regenerate' : 'Generate AI Description';
+                    actionsHtml = `
+                        <button class="btn btn-primary" onclick="generateAI(${index})">${label}</button>
+                    `;
+                    if (col.generatedDescription) {
+                        actionsHtml += `
+                            <button class="btn btn-danger" onclick="rejectDraft(${index})">Reject</button>
+                            <button class="btn btn-success" onclick="approveAndSave(${index})">Approve & Save</button>
+                        `;
+                    }
+                }
+
+                return `
+                    <div class="collection-card">
+                        <div class="card-header">
+                            <h3>${col.title}</h3>
+                            <span class="badge ${badgeClass}">${badgeText}</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="pane">
+                                <label>Current Shopify Description</label>
+                                <p>${col.description || 'No description found.'}</p>
+                            </div>
+                            <div class="pane">
+                                <label>AI Generated Draft</label>
+                                ${generatedPaneContent}
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            ${actionsHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Action: Generate / Regenerate Description
+        async function generateAI(index) {
+            const col = collections[index];
+            col.status = 'generating';
+            col.generatedDescription = '';
+            col.errorMsg = '';
+            renderCollections();
+
+            try {
+                const response = await authenticatedFetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ brand_name: col.title })
+                });
+                
+                const data = await response.json();
+
+                if (response.ok && data.status === 'success') {
+                    col.status = 'draft';
+                    col.generatedDescription = data.description;
+                } else if (data.status === 'validation_error') {
+                    col.status = 'val_error';
+                    col.generatedDescription = data.description || '';
+                    col.errorMsg = data.error || 'Output failed validation rules.';
+                } else {
+                    col.status = 'error';
+                    col.errorMsg = data.message || 'API request failed.';
+                }
+            } catch (err) {
+                col.status = 'error';
+                col.errorMsg = err.message || 'Network request failed.';
+            }
+
+            renderCollections();
+        }
+
+        // Action: Reject Draft
+        function rejectDraft(index) {
+            const col = collections[index];
+            col.status = 'original';
+            col.generatedDescription = '';
+            col.errorMsg = '';
+            renderCollections();
+        }
+
+        // Action: Approve & Save to Shopify
+        async function approveAndSave(index) {
+            const col = collections[index];
+            const textContent = col.generatedDescription.trim ? col.generatedDescription.trim() : col.generatedDescription;
+            
+            if (!textContent) {
+                alert('Cannot approve an empty description.');
+                return;
+            }
+
+            col.status = 'saving';
+            renderCollections();
+
+            try {
+                const response = await authenticatedFetch('/api/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        collection_id: col.id,
+                        description: col.generatedDescription
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.status === 'success') {
+                    col.status = 'success';
+                    col.description = col.generatedDescription;
+                } else {
+                    col.status = 'draft';
+                    alert(`Shopify update failed:\n${data.message || 'Unknown error'}`);
+                }
+            } catch (err) {
+                col.status = 'draft';
+                alert(`Network error saving update:\n${err.message}`);
+            }
+
+            renderCollections();
+        }
+
+        // Pagination helper
+        function loadMoreCollections() {
+            if (hasNextPage && nextCursor) {
+                loadCollections(nextCursor);
+            }
+        }
+    </script>
+</body>
+</html>
